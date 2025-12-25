@@ -20,7 +20,10 @@ model_list:
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
-      api_key: os.environ/ANTHROPIC_KEY_SONNETX
+      api_key: 
+        - os.environ/ANTHROPIC_KEY_HAIKU
+        - os.environ/ANTHROPIC_KEY_SONNETX
+        - os.environ/ANTHROPIC_KEY_SONNET
 
   # ---------------------------------------------------------
   # API 3: SONNET 4.5 (En güçlü/agent + coding)
@@ -28,7 +31,10 @@ model_list:
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
-      api_key: os.environ/ANTHROPIC_KEY_SONNET
+      api_key: 
+        - os.environ/ANTHROPIC_KEY_HAIKU
+        - os.environ/ANTHROPIC_KEY_SONNETX
+        - os.environ/ANTHROPIC_KEY_SONNET
 
 # --- YENİ EKLENECEK KISIM (SİHİRLİ DOKUNUŞ) ---
 litellm_settings:
@@ -36,6 +42,8 @@ litellm_settings:
   cache_params:
     type: redis
     url: os.environ/REDIS_URL
+  num_retries: 3  # Hata alırsa 3 kere daha dene
+  request_timeout: 60 # 60 saniye bekle
 # ---------------------------------------------
 
 general_settings:
