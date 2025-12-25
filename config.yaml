@@ -36,6 +36,5 @@ general_settings:
   database_url: os.environ/DATABASE_URL
   cache:
     type: redis
-    host: os.environ/REDIS_HOST
-    port: os.environ/REDIS_PORT
-    password: os.environ/REDIS_PASSWORD
+    # Parça parça değil, tek uzun link ile bağlan:
+    url: os.environ/REDIS_URL
