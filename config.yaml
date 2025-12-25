@@ -1,7 +1,9 @@
 model_list:
   - model_name: claude-3-5-sonnet
     litellm_params:
-      model: anthropic/claude-3-5-sonnet-20241022
+      # Burada 'anthropic/' ön ekini kaldıralım, belki LiteLLM çift ekliyordur.
+      # Ve garanti model olan Haiku'yu deneyelim.
+      model: claude-3-haiku-20240307
       api_key: os.environ/ANTHROPIC_API_KEY
 
 general_settings:
@@ -12,3 +14,6 @@ general_settings:
     host: os.environ/REDIS_HOST
     port: os.environ/REDIS_PORT
     password: os.environ/REDIS_PASSWORD
+
+
+    
