@@ -20,7 +20,7 @@ model_list:
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
-      api_key: os.environ/ANTHROPIC_KEY_HAIKU
+      api_key: os.environ/ANTHROPIC_KEY_SONNETX
 
   # ---------------------------------------------------------
   # API 3: SONNET 4.5 (En güçlü/agent + coding)
