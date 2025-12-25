@@ -4,50 +4,70 @@ model_list:
   # ---------------------------------------------------------
   - model_name: haiku-4-x
     litellm_params:
-      # Haiku 4.x ailesi -> güncel snapshot: Haiku 4.5
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_KEY_HAIKU
 
-  # (Opsiyonel) Haiku 4.x "latest" alias (davranış zamanla değişebilir)
   - model_name: haiku-4-latest-x
     litellm_params:
       model: anthropic/claude-haiku-4-5
       api_key: os.environ/ANTHROPIC_KEY_HAIKU
 
   # ---------------------------------------------------------
-  # API 2: SONNET 4 (Zeki işler için)
+  # API 2: SONNET 4 (aynı model_name ile 2 deployment -> load balance)
   # ---------------------------------------------------------
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
-      api_key: 
-        - os.environ/ANTHROPIC_KEY_HAIKU
-        - os.environ/ANTHROPIC_KEY_SONNETX
-        - os.environ/ANTHROPIC_KEY_SONNET
+      api_key: os.environ/ANTHROPIC_KEY_SONNETX
+      # order aynı kalırsa routing_strategy seçer
+      order: 1
+
+  - model_name: sonnet-4-x
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_KEY_SONNET
+      order: 1
 
   # ---------------------------------------------------------
-  # API 3: SONNET 4.5 (En güçlü/agent + coding)
+  # API 3: SONNET 4.5 (aynı model_name ile 2 deployment -> load balance)
   # ---------------------------------------------------------
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
-      api_key: 
-        - os.environ/ANTHROPIC_KEY_HAIKU
-        - os.environ/ANTHROPIC_KEY_SONNETX
-        - os.environ/ANTHROPIC_KEY_SONNET
+      api_key: os.environ/ANTHROPIC_KEY_SONNETX
+      order: 1
 
-# --- YENİ EKLENECEK KISIM (SİHİRLİ DOKUNUŞ) ---
+  - model_name: sonnet-4-5-x
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5-20250929
+      api_key: os.environ/ANTHROPIC_KEY_SONNET
+      order: 1
+
+# ---------------------------------------------------------
+# ROUTER: retry/timeout/load balancing + fallback
+# ---------------------------------------------------------
+router_settings:
+  routing_strategy: least-busy
+  num_retries: 3
+  timeout: 60
+  max_fallbacks: 3
+  # Sonnet 4.5 patlarsa Sonnet 4'e düş
+  fallbacks:
+    - {"sonnet-4-5-x": ["sonnet-4-x"]}
+
+# ---------------------------------------------------------
+# CACHE (Redis) - prod önerilen biçim
+# ---------------------------------------------------------
 litellm_settings:
-  cache: True  # <--- İŞTE BU EKSİKTİ!
+  cache: true
   cache_params:
     type: redis
-    url: os.environ/REDIS_URL
-  num_retries: 3  # Hata alırsa 3 kere daha dene
-  request_timeout: 60 # 60 saniye bekle
-# ---------------------------------------------
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+    password: os.environ/REDIS_PASSWORD
+    # opsiyonel ama faydalı:
+    max_connections: 100
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
-  # Buradaki eski cache ayarını silebilirsin veya kalsa da zarar etmez, 
-  # ama yukarıdaki litellm_settings daha baskındır.
