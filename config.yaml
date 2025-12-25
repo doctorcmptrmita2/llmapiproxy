@@ -36,5 +36,5 @@ general_settings:
   database_url: os.environ/DATABASE_URL
   cache:
     type: redis
-    # Parça parça değil, tek uzun link ile bağlan:
+    # Parça parça değil, tek ve uzun bağlantı adresi kullanacağız:
     url: os.environ/REDIS_URL
