@@ -1,0 +1,94 @@
+model_list:
+  # OpenAI Models
+  - model_name: gpt-4
+    litellm_params:
+      model: openai/gpt-4
+      api_key: os.environ/OPENAI_API_KEY
+      
+  - model_name: gpt-4-turbo
+    litellm_params:
+      model: openai/gpt-4-turbo-preview
+      api_key: os.environ/OPENAI_API_KEY
+      
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: openai/gpt-3.5-turbo
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Anthropic Claude Models
+  - model_name: claude-3-opus
+    litellm_params:
+      model: anthropic/claude-3-opus-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+      
+  - model_name: claude-3-sonnet
+    litellm_params:
+      model: anthropic/claude-3-sonnet-20240229
+      api_key: os.environ/ANTHROPIC_API_KEY
+      
+  - model_name: claude-3-haiku
+    litellm_params:
+      model: anthropic/claude-3-haiku-20240307
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Google Gemini
+  - model_name: gemini-pro
+    litellm_params:
+      model: gemini/gemini-pro
+      api_key: os.environ/GEMINI_API_KEY
+
+  # Mistral AI
+  - model_name: mistral-large
+    litellm_params:
+      model: mistral/mistral-large-latest
+      api_key: os.environ/MISTRAL_API_KEY
+      
+  - model_name: mistral-medium
+    litellm_params:
+      model: mistral/mistral-medium-latest
+      api_key: os.environ/MISTRAL_API_KEY
+
+litellm_settings:
+  # Caching
+  cache: true
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    password: os.environ/REDIS_PASSWORD
+    
+  # Rate Limiting
+  num_retries: 3
+  request_timeout: 600
+  
+  # Logging
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  
+  # Database
+  database_url: os.environ/DATABASE_URL
+  
+  # Master Key
+  master_key: os.environ/LITELLM_MASTER_KEY
+  
+  # UI Settings
+  ui_username: os.environ/UI_USERNAME
+  ui_password: os.environ/UI_PASSWORD
+  
+  # Budget & Rate Limits
+  max_budget: 100
+  budget_duration: 30d
+  
+  # Security
+  allowed_routes: ["*"]
+  
+general_settings:
+  completion_model: gpt-3.5-turbo
+  
+router_settings:
+  routing_strategy: simple-shuffle
+  model_group_alias:
+    gpt-4: ["gpt-4"]
+    gpt-3.5: ["gpt-3.5-turbo"]
+    claude: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+

@@ -1,72 +1,75 @@
 model_list:
-  # ---------------------------------------------------------
-  # API 1: HAIKU 4.x (Hızlı işler için ayrı anahtar)
-  # ---------------------------------------------------------
-  - model_name: haiku-4-x
+  # -------------------------
+  # HAIKU 4.x (ucuz/kolay işler)
+  # -------------------------
+  - model_name: auto
     litellm_params:
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_KEY_HAIKU
+      max_parallel_requests: 4
+      weight: 10
 
-  - model_name: haiku-4-latest-x
-    litellm_params:
-      model: anthropic/claude-haiku-4-5
-      api_key: os.environ/ANTHROPIC_KEY_HAIKU
-
-  # ---------------------------------------------------------
-  # API 2: SONNET 4 (aynı model_name ile 2 deployment -> load balance)
-  # ---------------------------------------------------------
+  # -------------------------
+  # SONNET 4 (2 key ile)
+  # -------------------------
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
       api_key: os.environ/ANTHROPIC_KEY_SONNETX
-      # order aynı kalırsa routing_strategy seçer
-      order: 1
+      max_parallel_requests: 1   # <<< en kritik stabilite ayarı
+      weight: 2
 
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
       api_key: os.environ/ANTHROPIC_KEY_SONNET
-      order: 1
+      max_parallel_requests: 1
+      weight: 1
 
-  # ---------------------------------------------------------
-  # API 3: SONNET 4.5 (aynı model_name ile 2 deployment -> load balance)
-  # ---------------------------------------------------------
+  # -------------------------
+  # SONNET 4.5 (2 key ile)
+  # -------------------------
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
       api_key: os.environ/ANTHROPIC_KEY_SONNETX
-      order: 1
+      max_parallel_requests: 1   # <<< en kritik stabilite ayarı
+      weight: 2
 
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
       api_key: os.environ/ANTHROPIC_KEY_SONNET
-      order: 1
+      max_parallel_requests: 1
+      weight: 1
 
-# ---------------------------------------------------------
-# ROUTER: retry/timeout/load balancing + fallback
-# ---------------------------------------------------------
+
 router_settings:
-  routing_strategy: least-busy
-  num_retries: 3
-  timeout: 60
-  max_fallbacks: 3
-  # Sonnet 4.5 patlarsa Sonnet 4'e düş
-  fallbacks:
-    - {"sonnet-4-5-x": ["sonnet-4-x"]}
+  routing_strategy: least-busy  # uzun süren çağrılarda daha stabil (en az meşgul olanı seçer) :contentReference[oaicite:3]{index=3}
+  enable_pre_call_check: true  # sende hata metninde False görünüyor; bunu True yap :contentReference[oaicite:4]{index=4}
 
-# ---------------------------------------------------------
-# CACHE (Redis) - prod önerilen biçim
-# ---------------------------------------------------------
+  # Cooldown'ı agresif tutma; yoksa 2 deployment da kilitlenir.
+  allowed_fails: 2
+  cooldown_time: 20
+
+  num_retries: 2  # rate-limit için exponential backoff uygulanır :contentReference[oaicite:5]{index=5}
+
+
 litellm_settings:
+  request_timeout: 180
+
+  # Cache (Redis)
   cache: true
   cache_params:
     type: redis
     host: os.environ/REDIS_HOST
     port: os.environ/REDIS_PORT
     password: os.environ/REDIS_PASSWORD
-    # opsiyonel ama faydalı:
-    max_connections: 100
+
+  # Model grubu fallback (sonnet-4-x kilitlenirse sonnet-4-5-x'a düş)
+  fallbacks:
+    - {"sonnet-4-x": ["sonnet-4-5-x", "auto"]}  # :contentReference[oaicite:6]{index=6}
+
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
