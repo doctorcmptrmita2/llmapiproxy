@@ -1,64 +1,48 @@
 model_list:
-  # -------------------------
-  # HAIKU 4.x (ucuz/kolay işler)
-  # -------------------------
   - model_name: autox
     litellm_params:
       model: anthropic/claude-haiku-4-5-20251001
       api_key: os.environ/ANTHROPIC_KEY_HAIKU
-      max_parallel_requests: 4
-      weight: 10
+    max_parallel_requests: 4
+    weight: 10
 
-  # -------------------------
-  # SONNET 4 (2 key ile)
-  # -------------------------
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
       api_key: os.environ/ANTHROPIC_KEY_SONNETX
-      max_parallel_requests: 1   # <<< en kritik stabilite ayarı
-      weight: 2
+    max_parallel_requests: 1
+    weight: 2
 
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
       api_key: os.environ/ANTHROPIC_KEY_SONNET
-      max_parallel_requests: 1
-      weight: 1
+    max_parallel_requests: 1
+    weight: 1
 
-  # -------------------------
-  # SONNET 4.5 (2 key ile)
-  # -------------------------
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
       api_key: os.environ/ANTHROPIC_KEY_SONNETX
-      max_parallel_requests: 1   # <<< en kritik stabilite ayarı
-      weight: 2
+    max_parallel_requests: 1
+    weight: 2
 
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
       api_key: os.environ/ANTHROPIC_KEY_SONNET
-      max_parallel_requests: 1
-      weight: 1
-
+    max_parallel_requests: 1
+    weight: 1
 
 router_settings:
-  routing_strategy: least-busy  # uzun süren çağrılarda daha stabil (en az meşgul olanı seçer) :contentReference[oaicite:3]{index=3}
-  enable_pre_call_check: true  # sende hata metninde False görünüyor; bunu True yap :contentReference[oaicite:4]{index=4}
-
-  # Cooldown'ı agresif tutma; yoksa 2 deployment da kilitlenir.
+  routing_strategy: least-busy
+  enable_pre_call_check: true
   allowed_fails: 2
   cooldown_time: 20
-
-  num_retries: 2  # rate-limit için exponential backoff uygulanır :contentReference[oaicite:5]{index=5}
-
+  num_retries: 2
 
 litellm_settings:
   request_timeout: 180
-
-  # Cache (Redis)
   cache: true
   cache_params:
     type: redis
@@ -66,10 +50,9 @@ litellm_settings:
     port: os.environ/REDIS_PORT
     password: os.environ/REDIS_PASSWORD
 
-  # Model grubu fallback (sonnet-4-x kilitlenirse sonnet-4-5-x'a düş)
   fallbacks:
-    - {"sonnet-4-x": ["sonnet-4-5-x", "auto"]}  # :contentReference[oaicite:6]{index=6}
-
+    - {"sonnet-4-x": ["sonnet-4-5-x", "autox"]}
+    - {"sonnet-4-5-x": ["autox"]}
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

@@ -10,7 +10,7 @@ BASE_URL = "https://proxyapison-litellmproxyv1.lc58dd.easypanel.host"
 API_KEY = "sk-super-gizli-admin-sifren"
 
 # Test edilecek model (Config dosyasında tanımladığımız isim)
-MODEL = "sonnet-4-x" 
+MODEL = "autox" 
 # ----------------
 
 def ask_ai(iteration):
