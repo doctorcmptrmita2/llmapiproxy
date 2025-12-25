@@ -1,27 +1,35 @@
 model_list:
-  # 1) Claude 3 Haiku (hızlı/ucuz)
-  - model_name: haiku
+  # ---------------------------------------------------------
+  # API 1: HAIKU 4.x (Hızlı işler için ayrı anahtar)
+  # ---------------------------------------------------------
+  - model_name: haiku-4-x
     litellm_params:
-      model: anthropic/claude-3-haiku-20240307
-      api_key: os.environ/ANTHROPIC_API_KEY
+      # Haiku 4.x ailesi -> güncel snapshot: Haiku 4.5
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU
 
-  # 2) Claude 3.5 Sonnet (pinned sürüm)
-  - model_name: sonnet
+  # (Opsiyonel) Haiku 4.x "latest" alias (davranış zamanla değişebilir)
+  - model_name: haiku-4-latest-x
     litellm_params:
-      model: anthropic/claude-3-5-sonnet-20240620
-      api_key: os.environ/ANTHROPIC_API_KEY
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU
 
-  # Cursor için takma ad (aynı modele gider)
-  - model_name: claude-3-5-sonnet
+  # ---------------------------------------------------------
+  # API 2: SONNET 4 (Zeki işler için)
+  # ---------------------------------------------------------
+  - model_name: sonnet-4-x
     litellm_params:
-      model: anthropic/claude-3-5-sonnet-20240620
-      api_key: os.environ/ANTHROPIC_API_KEY
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU
 
-  # 3) Claude Sonnet 4.5 (güncel “4.5” model ID)
-  - model_name: sonnet-4-5
+  # ---------------------------------------------------------
+  # API 3: SONNET 4.5 (En güçlü/agent + coding)
+  # ---------------------------------------------------------
+  - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
-      api_key: os.environ/ANTHROPIC_API_KEY
+      api_key: os.environ/ANTHROPIC_KEY_SONNET
+
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
