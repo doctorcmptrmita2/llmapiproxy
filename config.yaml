@@ -2,7 +2,7 @@ model_list:
   - model_name: claude-3-5-sonnet
     litellm_params:
       model: anthropic/claude-3-5-sonnet-20240620
-      api_key: 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
+      api_key: os.environ/ANTHROPIC_API_KEY
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY # Admin paneline giriş şifren bu olacak

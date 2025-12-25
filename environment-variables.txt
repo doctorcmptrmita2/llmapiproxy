@@ -1,0 +1,15 @@
+# LiteLLM Proxy Environment Variables
+# Bu değerleri Easypanel veya Docker ortamınızda environment variables olarak ayarlayın
+
+ANTHROPIC_API_KEY=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
+
+LITELLM_MASTER_KEY=sk-super-gizli-admin-sifren
+
+DATABASE_URL=postgres://postgres:4f963bc9b8b997a140cf@proxyapison_litellm-db-x:5432/litellm-db?sslmode=disable
+
+REDIS_HOST=proxyapison_litellm-redis
+
+REDIS_PORT=6379
+
+REDIS_PASSWORD=2cfbf38dbe81a13dc6aa
+
