@@ -1,28 +1,26 @@
 model_list:
-  # 1. HAIKU (Hızlı ve Ucuz - Tier 1 hesaplarda bile çalışır)
+  # 1) Claude 3 Haiku (hızlı/ucuz)
   - model_name: haiku
     litellm_params:
       model: anthropic/claude-3-haiku-20240307
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  # 2. SONNET 3.5 (Ana Beyin - En iyi kod yazan model)
-  - model_name: sonnet-X
+  # 2) Claude 3.5 Sonnet (pinned sürüm)
+  - model_name: sonnet
     litellm_params:
-      model: anthropic/claude-3-5-sonnet-20241022
-      api_key: os.environ/ANTHROPIC_API_KEY
-  
-  # Alternatif isimle de erişmek istersen (Cursor'da kolaylık olsun diye)
-  - model_name: claude-3-5-sonnet-X
-    litellm_params:
-      model: anthropic/claude-3-5-sonnet-20241022
+      model: anthropic/claude-3-5-sonnet-20240620
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  # 3. CLAUDE 4.5 (GELECEK İÇİN HAZIRLIK)
-  # DİKKAT: Bu model henüz çıkmadı. Çıktığında aşağıdaki '2025xxxx' kısmını
-  # resmi ID ile değiştirmen yeterli olacak.
-  - model_name: claude-4.5-X
+  # Cursor için takma ad (aynı modele gider)
+  - model_name: claude-3-5-sonnet
     litellm_params:
-      model: anthropic/claude-4.5-sonnet-2025xxxx 
+      model: anthropic/claude-3-5-sonnet-20240620
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # 3) Claude Sonnet 4.5 (güncel “4.5” model ID)
+  - model_name: sonnet-4-5
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5-20250929
       api_key: os.environ/ANTHROPIC_API_KEY
 
 general_settings:
@@ -33,4 +31,3 @@ general_settings:
     host: os.environ/REDIS_HOST
     port: os.environ/REDIS_PORT
     password: os.environ/REDIS_PASSWORD
-    
