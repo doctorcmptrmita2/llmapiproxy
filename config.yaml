@@ -1,9 +1,8 @@
 model_list:
-  - model_name: claude-3-5-sonnet
+  # 1. HIZLI VE UCUZ MODEL (Şu an çalışan bu)
+  - model_name: haiku
     litellm_params:
-      # Burada 'anthropic/' ön ekini kaldıralım, belki LiteLLM çift ekliyordur.
-      # Ve garanti model olan Haiku'yu deneyelim.
-      model: claude-3-haiku-20240307
+      model: anthropic/claude-3-haiku-20240307
       api_key: os.environ/ANTHROPIC_API_KEY
 
 general_settings:
