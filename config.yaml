@@ -30,11 +30,16 @@ model_list:
       model: anthropic/claude-sonnet-4-5-20250929
       api_key: os.environ/ANTHROPIC_KEY_SONNET
 
+# --- YENİ EKLENECEK KISIM (SİHİRLİ DOKUNUŞ) ---
+litellm_settings:
+  cache: True  # <--- İŞTE BU EKSİKTİ!
+  cache_params:
+    type: redis
+    url: os.environ/REDIS_URL
+# ---------------------------------------------
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
-  cache:
-    type: redis
-    # Parça parça değil, tek ve uzun bağlantı adresi kullanacağız:
-    url: os.environ/REDIS_URL
+  # Buradaki eski cache ayarını silebilirsin veya kalsa da zarar etmez, 
+  # ama yukarıdaki litellm_settings daha baskındır.
