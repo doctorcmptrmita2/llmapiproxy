@@ -37,7 +37,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # LiteLLM Proxy
+  # LiteLLM Proxy (Backend)
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: litellm_proxy
@@ -52,7 +52,7 @@ services:
       UI_USERNAME: ${LITELLM_UI_USERNAME}
       UI_PASSWORD: ${LITELLM_UI_PASSWORD}
     volumes:
-      - ./litellm-config.yaml:/app/config.yaml
+      - ./config.yaml:/app/config.yaml
     command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "8"]
     ports:
       - "4000:4000"
@@ -65,6 +65,34 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Haiku Planner Proxy (Frontend with Decomposition)
+  haiku-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.haiku-proxy
+    container_name: haiku_planner_proxy
+    restart: unless-stopped
+    environment:
+      LITELLM_PROXY_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      PROXY_PORT: 8000
+      PYTHONPATH: /app
+    volumes:
+      - ./haiku-planner-middleware.py:/app/haiku_planner_middleware.py
+      - ./litellm-haiku-proxy.py:/app/main.py
+    ports:
+      - "8000:8000"
+    networks:
+      - litellm_network
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -211,4 +239,5 @@ volumes:
     driver: local
   laravel_storage:
     driver: local
+
 

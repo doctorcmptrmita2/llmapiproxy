@@ -210,42 +210,6 @@ rate_limiting:
       global_tpm: 240000
       global_rpm: 480
 
-# Haiku Planner (Large Request Decomposition) Ayarları
-haiku_planner:
-  # Aktivasyon ayarları
-  enabled: true
-  large_request_threshold: 8000  # token threshold
-  max_chunks: 3  # MEGA_PROMPT spec: max 3 chunks
-  max_internal_calls: 4  # 1 planner + 3 chunks
-  
-  # Model ayarları
-  planner_model: "autox"  # Haiku 4.5 (hızlı ve ucuz)
-  fast_execution_model: "autox"  # x-quality: fast için
-  deep_execution_model: "sonnet-4-x"  # x-quality: deep için
-  
-  # Maliyet kontrol
-  max_cost_per_request: 1.0  # $1 maksimum per request
-  cost_safety_margin: 0.2  # %20 güvenlik marjı
-  
-  # Timeout ayarları
-  planner_timeout: 30  # saniye
-  chunk_timeout: 60  # saniye per chunk
-  total_timeout: 300  # toplam 5 dakika
-  
-  # Cache ayarları
-  cache_plans: true
-  plan_cache_ttl: 1800  # 30 dakika
-  
-  # Monitoring
-  log_decompositions: true
-  track_chunk_performance: true
-  alert_on_high_cost: true
-  
-  # Güvenlik
-  max_files_per_chunk: 5
-  max_tokens_per_chunk: 2000
-  blocked_patterns: ["rm -rf", "DROP TABLE", "DELETE FROM"]
-
 # Güvenlik ayarları
 security:
   # API key validation
@@ -258,7 +222,7 @@ security:
   cors:
     allow_origins: ["*"]
     allow_methods: ["GET", "POST", "OPTIONS"]
-    allow_headers: ["*", "x-decompose", "x-quality", "x-max-cost"]
+    allow_headers: ["*"]
     
   # Rate limiting bypass (admin için)
   bypass_rate_limit_roles: ["admin", "super_admin"]

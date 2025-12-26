@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+RUN pip install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.24.0 \
+    httpx==0.25.0 \
+    aiohttp==3.9.0 \
+    tiktoken==0.5.1 \
+    pydantic==2.4.2
+
+# Copy application files
+COPY haiku-planner-middleware.py /app/haiku-planner-middleware.py
+COPY litellm-haiku-proxy.py /app/main.py
+
+# Create symlink for import
+RUN ln -s /app/haiku-planner-middleware.py /app/haiku_planner_middleware.py
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
