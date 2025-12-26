@@ -60,7 +60,7 @@ router_settings:
   cooldown_time: 30
   num_retries: 3
   retry_delay: 2
-  timeout: 180
+  timeout: 600  # MVP: Büyük istekler için 10 dakika (Haiku planner için)
 
 # Ana LiteLLM ayarları
 litellm_settings:
@@ -73,8 +73,9 @@ litellm_settings:
     password: os.environ/REDIS_PASSWORD
     ttl: 3600  # 1 saat cache
     
-  # Timeout ayarları
-  request_timeout: 180
+  # Timeout ayarları (MVP: Büyük istekler ve Haiku planner için uyumlu)
+  request_timeout: 600  # 10 dakika - Haiku planner chunk execution için
+  stream_timeout: 300  # Streaming timeout (şu an kapalı ama gelecekte kullanım için)
   
   # Retry ayarları
   num_retries: 3
@@ -95,7 +96,7 @@ litellm_settings:
   
   # Rate limiting (kullanıcı başına)
   default_user_tpm_limit: 833     # dakikada 833 token
-  default_user_rpm_limit: 2       # dakikada 2 istek
+  default_user_rpm_limit: 20       # dakikada 2 istek
   default_user_max_requests_per_day: 100    # günde 100 istek
   default_user_max_tokens_per_day: 50000    # günde 50K token
   
@@ -157,15 +158,24 @@ user_groups:
 model_settings:
   autox:
     max_tokens: 4096
+    max_output_tokens: 4096  # MVP: output token limiti
+    context_window: 200000  # Claude Haiku 4.5 context cap
     temperature: 0.7
+    stream: false  # MVP: streaming kapalı
     
   sonnet-4-x:
     max_tokens: 8192
+    max_output_tokens: 8192  # MVP: output token limiti
+    context_window: 200000  # Claude Sonnet 4 context cap
     temperature: 0.7
+    stream: false  # MVP: streaming kapalı
     
   sonnet-4-5-x:
     max_tokens: 8192
+    max_output_tokens: 8192  # MVP: output token limiti
+    context_window: 200000  # Claude Sonnet 4.5 context cap
     temperature: 0.7
+    stream: false  # MVP: streaming kapalı
 
 # Monitoring ve alerting
 monitoring:
@@ -212,11 +222,14 @@ rate_limiting:
 
 # Haiku Planner (Large Request Decomposition) Ayarları
 haiku_planner:
-  # Aktivasyon ayarları
+  # Aktivasyon ayarları (MVP: Büyük isteklerde otomatik aktif)
   enabled: true
-  large_request_threshold: 8000  # token threshold
+  auto_enable: true  # MVP: Büyük isteklerde otomatik aktif
+  large_request_threshold: 8000  # token threshold - bu değerin üzerinde otomatik aktif
+  max_tokens_threshold: 15000  # max_tokens threshold - bu değerin üzerinde otomatik aktif
   max_chunks: 3  # MEGA_PROMPT spec: max 3 chunks
   max_internal_calls: 4  # 1 planner + 3 chunks
+  chunk_size: 2000  # Her chunk için maksimum token
   
   # Model ayarları
   planner_model: "autox"  # Haiku 4.5 (hızlı ve ucuz)
@@ -227,10 +240,11 @@ haiku_planner:
   max_cost_per_request: 1.0  # $1 maksimum per request
   cost_safety_margin: 0.2  # %20 güvenlik marjı
   
-  # Timeout ayarları
-  planner_timeout: 30  # saniye
-  chunk_timeout: 60  # saniye per chunk
-  total_timeout: 300  # toplam 5 dakika
+  # Timeout ayarları (MVP: Büyük istekler için uyumlu)
+  planner_timeout: 60  # saniye - plan oluşturma için
+  chunk_timeout: 120  # saniye per chunk - büyük chunk'lar için
+  total_timeout: 600  # toplam 10 dakika - tüm decomposition için
+  max_chunk_execution_time: 180  # tek chunk için maksimum süre
   
   # Cache ayarları
   cache_plans: true

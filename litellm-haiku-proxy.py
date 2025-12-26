@@ -79,6 +79,10 @@ async def chat_completions(
         # Request body'yi oku
         body = await request.json()
         
+        # MVP: Streaming'i kapat (stream=false)
+        if "stream" not in body:
+            body["stream"] = False
+        
         # Headers'ı dict'e dönüştür
         headers = {
             "x-decompose": x_decompose or "0",
@@ -89,7 +93,7 @@ async def chat_completions(
         # Decomposition kontrolü
         should_decompose = haiku_planner.should_decompose(body, headers)
         
-        logger.info(f"📨 Request received - Decompose: {should_decompose}")
+        logger.info(f"📨 Request received - Decompose: {should_decompose}, Stream: {body.get('stream', False)}")
         
         if should_decompose:
             # Haiku Planner ile işle
@@ -122,12 +126,19 @@ async def chat_completions(
         )
 
 async def forward_to_litellm(body: Dict[str, Any], headers) -> JSONResponse:
-    """LiteLLM proxy'ye request'i yönlendir"""
+    """LiteLLM proxy'ye request'i yönlendir (MVP: Timeout uyumlu)"""
     
     litellm_url = os.getenv("LITELLM_PROXY_URL", "http://localhost:4000")
     
+    # MVP: Büyük istekler için timeout (600 saniye = 10 dakika)
+    max_tokens = body.get("max_tokens", 0)
+    if max_tokens >= 15000:
+        timeout_value = 600.0  # 10 dakika
+    else:
+        timeout_value = 300.0  # 5 dakika
+    
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=timeout_value) as client:
             response = await client.post(
                 f"{litellm_url}/chat/completions",
                 json=body,

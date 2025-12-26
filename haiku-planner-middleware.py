@@ -77,13 +77,22 @@ class HaikuPlannerMiddleware:
             return len(text) // 4
     
     def should_decompose(self, request_data: Dict[str, Any], headers: Dict[str, str]) -> bool:
-        """İsteğin decompose edilip edilmeyeceğini kontrol et"""
+        """İsteğin decompose edilip edilmeyeceğini kontrol et (MVP: Otomatik büyük istekler için)"""
         
-        # Header kontrolü
+        # Header kontrolü (manuel override)
         if headers.get('x-decompose') == '1':
             return True
         
-        # Token threshold kontrolü
+        # Header ile devre dışı bırakma
+        if headers.get('x-decompose') == '0':
+            return False
+        
+        # MVP: max_tokens threshold kontrolü (büyük output için)
+        max_tokens = request_data.get('max_tokens', 0)
+        if max_tokens >= 15000:  # 15K+ token output isteği
+            return True
+        
+        # Token threshold kontrolü (input için)
         messages = request_data.get('messages', [])
         total_tokens = 0
         
@@ -96,6 +105,7 @@ class HaikuPlannerMiddleware:
                     if isinstance(item, dict) and item.get('type') == 'text':
                         total_tokens += self.count_tokens(item.get('text', ''))
         
+        # MVP: 8000+ token input veya büyük istekler için otomatik aktif
         return total_tokens > self.LARGE_REQUEST_THRESHOLD
     
     async def create_plan(self, original_request: Dict[str, Any]) -> DecompositionPlan:
@@ -149,17 +159,20 @@ CONSTRAINTS:
 
 Return ONLY the JSON, no other text."""
 
-        # Planner çağrısı
+        # Planner çağrısı (MVP: stream=false)
         planner_request = {
             "model": self.PLANNER_MODEL,
             "messages": [
                 {"role": "user", "content": planner_prompt}
             ],
             "max_tokens": 1000,
-            "temperature": 0.1
+            "temperature": 0.1,
+            "stream": False  # MVP: Streaming kapalı
         }
         
-        async with aiohttp.ClientSession() as session:
+        # MVP: Planner için timeout (60 saniye)
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 f"{self.litellm_base_url}/chat/completions",
                 headers={
@@ -246,18 +259,21 @@ INSTRUCTIONS:
 
 Generate the code changes as unified diff patches."""
 
-        # Chunk request
+        # Chunk request (MVP: stream=false, timeout uyumlu)
         chunk_request = {
             "model": model,
             "messages": [
                 {"role": "user", "content": chunk_prompt}
             ],
             "max_tokens": chunk.max_tokens,
-            "temperature": 0.3
+            "temperature": 0.3,
+            "stream": False  # MVP: Streaming kapalı
         }
         
         try:
-            async with aiohttp.ClientSession() as session:
+            # MVP: Büyük chunk'lar için timeout (120 saniye)
+            timeout = aiohttp.ClientTimeout(total=180)  # 3 dakika per chunk
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(
                     f"{self.litellm_base_url}/chat/completions",
                     headers={
