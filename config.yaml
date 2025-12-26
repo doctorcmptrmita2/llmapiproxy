@@ -1,278 +1,95 @@
-# LiteLLM Production Config - API Satışı İçin Optimize Edilmiş
-# 50 kullanıcı x 800 TL/ay - Balanced Senaryo
-# Güncellenme: 2025-12-26
 
-model_list:
-  # Claude-4 Haiku (Hızlı ve ekonomik - %40 kullanım)
-  - model_name: autox
-    litellm_params:
-      model: anthropic/claude-haiku-4-5-20251001
-      api_key: os.environ/ANTHROPIC_KEY_HAIKU
-    max_parallel_requests: 8
-    weight: 40
-    tpm: 50000  # tokens per minute
-    rpm: 100    # requests per minute
-
-  # Claude-4 Sonnet (Premium - %30 kullanım)
-  - model_name: sonnet-4-x
-    litellm_params:
-      model: anthropic/claude-sonnet-4-20250514
-      api_key: os.environ/ANTHROPIC_KEY_SONNETX
-    max_parallel_requests: 4
-    weight: 30
-    tpm: 30000
-    rpm: 60
-
-  # Claude-4.5 Sonnet (En yeni - %30 kullanım)
-  - model_name: sonnet-4-5-x
-    litellm_params:
-      model: anthropic/claude-sonnet-4-5-20250929
-      api_key: os.environ/ANTHROPIC_KEY_SONNET
-    max_parallel_requests: 4
-    weight: 30
-    tpm: 30000
-    rpm: 60
-
-  # Backup modeller (fallback için)
-  - model_name: gpt-4-turbo-backup
-    litellm_params:
-      model: openai/gpt-4-turbo-preview
-      api_key: os.environ/OPENAI_API_KEY
-    max_parallel_requests: 2
-    weight: 0  # Sadece fallback
-    tpm: 20000
-    rpm: 40
-
-  - model_name: claude-3-haiku-backup
-    litellm_params:
-      model: anthropic/claude-3-haiku-20240307
-      api_key: os.environ/ANTHROPIC_BACKUP_KEY
-    max_parallel_requests: 6
-    weight: 0  # Sadece fallback
-    tpm: 40000
-    rpm: 80
-
-# Router ayarları
-router_settings:
-  routing_strategy: least-busy
-  enable_pre_call_check: true
-  allowed_fails: 3
-  cooldown_time: 30
-  num_retries: 3
-  retry_delay: 2
-  timeout: 600  # MVP: Büyük istekler için 10 dakika (Haiku planner için)
-
-# Ana LiteLLM ayarları
-litellm_settings:
-  # Cache ayarları (maliyet tasarrufu için kritik)
-  cache: true
-  cache_params:
-    type: redis
-    host: os.environ/REDIS_HOST
-    port: os.environ/REDIS_PORT
-    password: os.environ/REDIS_PASSWORD
-    ttl: 3600  # 1 saat cache
-    
-  # Timeout ayarları (MVP: Büyük istekler ve Haiku planner için uyumlu)
-  request_timeout: 600  # 10 dakika - Haiku planner chunk execution için
-  stream_timeout: 300  # Streaming timeout (şu an kapalı ama gelecekte kullanım için)
-  
-  # Retry ayarları
-  num_retries: 3
-  
-  # Callback ayarları (monitoring için)
-  success_callback: ["langfuse", "webhook"]
-  failure_callback: ["langfuse", "webhook"]
-  
-  # Fallback stratejisi
-  fallbacks:
-    - {"autox": ["claude-3-haiku-backup"]}
-    - {"sonnet-4-x": ["gpt-4-turbo-backup", "autox"]}
-    - {"sonnet-4-5-x": ["sonnet-4-x", "autox"]}
-  
-  # Kullanıcı limitleri (Balanced senaryo)
-  default_user_max_budget: 23.19  # $800 TL / 34.5 kur = ~$23.19
-  default_user_budget_duration: "30d"
-  
-  # Rate limiting (kullanıcı başına)
-  default_user_tpm_limit: 833     # dakikada 833 token
-  default_user_rpm_limit: 20       # dakikada 2 istek
-  default_user_max_requests_per_day: 100    # günde 100 istek
-  default_user_max_tokens_per_day: 50000    # günde 50K token
-  
-  # Global limitler
-  max_budget: 1160  # Toplam aylık bütçe ($)
-  budget_duration: "30d"
-  
-  # Güvenlik ayarları
-  allowed_routes: ["chat/completions", "completions", "embeddings"]
-  blocked_user_list: []
-  
-  # Logging
-  set_verbose: false
-  json_logs: true
-
-# Genel ayarlar
-general_settings:
-  master_key: os.environ/LITELLM_MASTER_KEY
-  database_url: os.environ/DATABASE_URL
-  
-  # UI ayarları
-  ui_username: os.environ/UI_USERNAME
-  ui_password: os.environ/UI_PASSWORD
-  
-  # Webhook ayarları (monitoring için)
-  alerting:
-    - service: webhook
-      webhook_url: os.environ/MONITORING_WEBHOOK_URL
-      
-  # Email uyarıları
-  email_settings:
-    smtp_host: os.environ/SMTP_HOST
-    smtp_port: 587
-    smtp_username: os.environ/SMTP_USERNAME
-    smtp_password: os.environ/SMTP_PASSWORD
-    from_email: os.environ/FROM_EMAIL
-    alert_emails: 
-      - os.environ/ADMIN_EMAIL
-
-# Kullanıcı grupları ve özel limitler
-user_groups:
-  # Premium kullanıcılar (daha yüksek limitler)
-  premium:
-    max_budget: 46.38  # 2x normal limit
-    tpm_limit: 1666
-    rpm_limit: 4
-    max_requests_per_day: 200
-    max_tokens_per_day: 100000
-    
-  # Starter kullanıcılar (daha düşük limitler)
-  starter:
-    max_budget: 11.59  # 0.5x normal limit
-    tpm_limit: 416
-    rpm_limit: 1
-    max_requests_per_day: 50
-    max_tokens_per_day: 25000
-
-# Model-specific ayarları
-model_settings:
-  autox:
-    max_tokens: 4096
-    max_output_tokens: 4096  # MVP: output token limiti
-    context_window: 200000  # Claude Haiku 4.5 context cap
-    temperature: 0.7
-    stream: false  # MVP: streaming kapalı
-    
-  sonnet-4-x:
-    max_tokens: 8192
-    max_output_tokens: 8192  # MVP: output token limiti
-    context_window: 200000  # Claude Sonnet 4 context cap
-    temperature: 0.7
-    stream: false  # MVP: streaming kapalı
-    
-  sonnet-4-5-x:
-    max_tokens: 8192
-    max_output_tokens: 8192  # MVP: output token limiti
-    context_window: 200000  # Claude Sonnet 4.5 context cap
-    temperature: 0.7
-    stream: false  # MVP: streaming kapalı
-
-# Monitoring ve alerting
-monitoring:
-  # Performans metrikleri
-  track_cost_per_token: true
-  track_response_time: true
-  track_success_rate: true
-  
-  # Uyarı eşikleri
-  alerts:
-    high_cost_threshold: 0.10  # $0.10/request üzeri uyarı
-    slow_response_threshold: 10.0  # 10 saniye üzeri uyarı
-    low_success_rate_threshold: 95.0  # %95 altı uyarı
-    budget_usage_threshold: 80.0  # %80 bütçe kullanımı uyarısı
-    
-  # Günlük raporlar
-  daily_reports:
-    enabled: true
-    send_to: os.environ/ADMIN_EMAIL
-    include_top_users: 10
-    include_cost_breakdown: true
-
-# Rate limiting detayları
-rate_limiting:
-  # Sliding window rate limiting
-  strategy: "sliding_window"
-  
-  # IP bazlı limitler (DDoS koruması)
-  ip_rate_limits:
-    requests_per_minute: 60
-    requests_per_hour: 1000
-    
-  # Model bazlı global limitler
-  model_rate_limits:
-    autox:
-      global_tpm: 400000  # 8 paralel * 50K
-      global_rpm: 800     # 8 paralel * 100
-    sonnet-4-x:
-      global_tpm: 240000  # 8 paralel * 30K (2 instance)
-      global_rpm: 480     # 8 paralel * 60
-    sonnet-4-5-x:
-      global_tpm: 240000
-      global_rpm: 480
-
-# Haiku Planner (Large Request Decomposition) Ayarları
-haiku_planner:
-  # Aktivasyon ayarları (MVP: Büyük isteklerde otomatik aktif)
-  enabled: true
-  auto_enable: true  # MVP: Büyük isteklerde otomatik aktif
-  large_request_threshold: 8000  # token threshold - bu değerin üzerinde otomatik aktif
-  max_tokens_threshold: 15000  # max_tokens threshold - bu değerin üzerinde otomatik aktif
-  max_chunks: 3  # MEGA_PROMPT spec: max 3 chunks
-  max_internal_calls: 4  # 1 planner + 3 chunks
-  chunk_size: 2000  # Her chunk için maksimum token
-  
-  # Model ayarları
-  planner_model: "autox"  # Haiku 4.5 (hızlı ve ucuz)
-  fast_execution_model: "autox"  # x-quality: fast için
-  deep_execution_model: "sonnet-4-x"  # x-quality: deep için
-  
-  # Maliyet kontrol
-  max_cost_per_request: 1.0  # $1 maksimum per request
-  cost_safety_margin: 0.2  # %20 güvenlik marjı
-  
-  # Timeout ayarları (MVP: Büyük istekler için uyumlu)
-  planner_timeout: 60  # saniye - plan oluşturma için
-  chunk_timeout: 120  # saniye per chunk - büyük chunk'lar için
-  total_timeout: 600  # toplam 10 dakika - tüm decomposition için
-  max_chunk_execution_time: 180  # tek chunk için maksimum süre
-  
-  # Cache ayarları
-  cache_plans: true
-  plan_cache_ttl: 1800  # 30 dakika
-  
-  # Monitoring
-  log_decompositions: true
-  track_chunk_performance: true
-  alert_on_high_cost: true
-  
-  # Güvenlik
-  max_files_per_chunk: 5
-  max_tokens_per_chunk: 2000
-  blocked_patterns: ["rm -rf", "DROP TABLE", "DELETE FROM"]
-
-# Güvenlik ayarları
-security:
-  # API key validation
-  validate_api_keys: true
-  
-  # Request validation
-  max_request_size: "10MB"
-  
-  # CORS ayarları
-  cors:
-    allow_origins: ["*"]
-    allow_methods: ["GET", "POST", "OPTIONS"]
-    allow_headers: ["*", "x-decompose", "x-quality", "x-max-cost"]
-    
-  # Rate limiting bypass (admin için)
-  bypass_rate_limit_roles: ["admin", "super_admin"]
+ model_list:
+   # Claude-4 Haiku (Hızlı ve ekonomik - %40 kullanım)
+   - model_name: autox
+     litellm_params:
+       model: anthropic/claude-haiku-4-5-20251001
+-      api_key: os.environ/ANTHROPIC_KEY_HAIKU
++      api_key: os.environ/ANTHROPIC_KEY_HAIKU
+     max_parallel_requests: 8
+-    weight: 40
+     tpm: 50000  # tokens per minute
+     rpm: 100    # requests per minute
++  - model_name: autox
++    litellm_params:
++      model: anthropic/claude-haiku-4-5-20251001
++      api_key: os.environ/ANTHROPIC_KEY_SONNET
++    max_parallel_requests: 8
++    tpm: 50000
++    rpm: 100
++  - model_name: autox
++    litellm_params:
++      model: anthropic/claude-haiku-4-5-20251001
++      api_key: os.environ/ANTHROPIC_KEY_SONNETX
++    max_parallel_requests: 8
++    tpm: 50000
++    rpm: 100
+ 
+   # Claude-4 Sonnet (Premium - %30 kullanım)
+   - model_name: sonnet-4-x
+     litellm_params:
+       model: anthropic/claude-sonnet-4-20250514
+-      api_key: os.environ/ANTHROPIC_KEY_SONNETX
++      api_key: os.environ/ANTHROPIC_KEY_HAIKU
+     max_parallel_requests: 4
+-    weight: 30
+     tpm: 30000
+     rpm: 60
++  - model_name: sonnet-4-x
++    litellm_params:
++      model: anthropic/claude-sonnet-4-20250514
++      api_key: os.environ/ANTHROPIC_KEY_SONNET
++    max_parallel_requests: 4
++    tpm: 30000
++    rpm: 60
++  - model_name: sonnet-4-x
++    litellm_params:
++      model: anthropic/claude-sonnet-4-20250514
++      api_key: os.environ/ANTHROPIC_KEY_SONNETX
++    max_parallel_requests: 4
++    tpm: 30000
++    rpm: 60
+ 
+   # Claude-4.5 Sonnet (En yeni - %30 kullanım)
+   - model_name: sonnet-4-5-x
+     litellm_params:
+       model: anthropic/claude-sonnet-4-5-20250929
+-      api_key: os.environ/ANTHROPIC_KEY_SONNET
++      api_key: os.environ/ANTHROPIC_KEY_HAIKU
+     max_parallel_requests: 4
+-    weight: 30
+     tpm: 30000
+     rpm: 60
++  - model_name: sonnet-4-5-x
++    litellm_params:
++      model: anthropic/claude-sonnet-4-5-20250929
++      api_key: os.environ/ANTHROPIC_KEY_SONNET
++    max_parallel_requests: 4
++    tpm: 30000
++    rpm: 60
++  - model_name: sonnet-4-5-x
++    litellm_params:
++      model: anthropic/claude-sonnet-4-5-20250929
++      api_key: os.environ/ANTHROPIC_KEY_SONNETX
++    max_parallel_requests: 4
++    tpm: 30000
++    rpm: 60
+@@
+ rate_limiting:
+@@
+   model_rate_limits:
+     autox:
+-      global_tpm: 400000  # 8 paralel * 50K
+-      global_rpm: 800     # 8 paralel * 100
++      global_tpm: 1200000  # 3 deployments * (8 * 50K)
++      global_rpm: 2400     # 3 deployments * (8 * 100)
+     sonnet-4-x:
+-      global_tpm: 240000  # 8 paralel * 30K (2 instance)
+-      global_rpm: 480     # 8 paralel * 60
++      global_tpm: 360000   # 3 deployments * (4 * 30K)
++      global_rpm: 720      # 3 deployments * (4 * 60)
+     sonnet-4-5-x:
+-      global_tpm: 240000
+-      global_rpm: 480
++      global_tpm: 360000
++      global_rpm: 720
