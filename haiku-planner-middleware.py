@@ -65,6 +65,7 @@ class HaikuPlannerMiddleware:
             "autox": 3.0,  # Claude-4 Haiku
             "sonnet-4-x": 45.0,  # Claude-4 Sonnet
             "sonnet-4-5-x": 45.0,  # Claude-4.5 Sonnet
+            "claude-3-5-x": 15.0,  # Claude 3.5 Sonnet
             "gpt-4-turbo-backup": 20.0
         }
     

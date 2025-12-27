@@ -33,6 +33,16 @@ model_list:
     tpm: 30000
     rpm: 60
 
+  # Claude 3.5 Sonnet (Premium - %20 kullanım)
+  - model_name: claude-3-5-x
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_KEY_SONNET
+    max_parallel_requests: 4
+    weight: 20
+    tpm: 30000
+    rpm: 60
+
   # Backup modeller (fallback için)
   - model_name: gpt-4-turbo-backup
     litellm_params:
@@ -89,6 +99,7 @@ litellm_settings:
     - {"autox": ["claude-3-haiku-backup"]}
     - {"sonnet-4-x": ["gpt-4-turbo-backup", "autox"]}
     - {"sonnet-4-5-x": ["sonnet-4-x", "autox"]}
+    - {"claude-3-5-x": ["sonnet-4-5-x", "sonnet-4-x", "autox"]}
   
   # Kullanıcı limitleri (Balanced senaryo)
   default_user_max_budget: 23.19  # $800 TL / 34.5 kur = ~$23.19
@@ -176,6 +187,13 @@ model_settings:
     context_window: 200000  # Claude Sonnet 4.5 context cap
     temperature: 0.7
     stream: false  # MVP: streaming kapalı
+    
+  claude-3-5-x:
+    max_tokens: 8192
+    max_output_tokens: 8192  # MVP: output token limiti
+    context_window: 200000  # Claude 3.5 Sonnet context cap
+    temperature: 0.7
+    stream: false  # MVP: streaming kapalı
 
 # Monitoring ve alerting
 monitoring:
@@ -219,6 +237,9 @@ rate_limiting:
     sonnet-4-5-x:
       global_tpm: 240000
       global_rpm: 480
+    claude-3-5-x:
+      global_tpm: 240000  # 4 paralel * 30K
+      global_rpm: 480     # 4 paralel * 60
 
 # Haiku Planner (Large Request Decomposition) Ayarları
 haiku_planner:

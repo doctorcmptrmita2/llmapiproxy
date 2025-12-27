@@ -25,7 +25,7 @@ class TestConfig:
     
     def __post_init__(self):
         if self.models is None:
-            self.models = ["autox", "sonnet-4-x", "sonnet-4-5-x"]
+            self.models = ["autox", "sonnet-4-x", "sonnet-4-5-x", "claude-3-5-x"]
 
 @dataclass
 class TestResult:
@@ -370,7 +370,7 @@ async def main():
     print("=" * 80)
     
     # Test edilecek modeller
-    models = ["autox", "sonnet-4-x", "sonnet-4-5-x"]
+    models = ["autox", "sonnet-4-x", "sonnet-4-5-x", "claude-3-5-x"]
     
     # Token boyutları
     token_sizes = [2500, 5000, 15000, 40000, 60000]
