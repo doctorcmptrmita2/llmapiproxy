@@ -4,9 +4,6 @@
 # ============================================
 # ANA ORGANİZASYON (Org 1) - MEVCUT KEY'LER
 # ============================================
-ANTHROPIC_KEY_HAIKU=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
-ANTHROPIC_KEY_SONNET=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
-ANTHROPIC_KEY_SONNETX=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
 
 # ============================================
 # İKİNCİ ORGANİZASYON (Org 2) - FAILOVER İÇİN
