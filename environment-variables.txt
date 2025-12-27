@@ -1,15 +1,102 @@
 # LiteLLM Proxy Environment Variables
 # Bu değerleri Easypanel veya Docker ortamınızda environment variables olarak ayarlayın
 
-ANTHROPIC_API_KEY=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
+# ============================================
+# ANA ORGANİZASYON (Org 1) - MEVCUT KEY'LER
+# ============================================
+ANTHROPIC_KEY_HAIKU=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
+ANTHROPIC_KEY_SONNET=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
+ANTHROPIC_KEY_SONNETX=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
 
+# ============================================
+# İKİNCİ ORGANİZASYON (Org 2) - FAILOVER İÇİN
+# ============================================
+# NOT: Farklı bir organizasyondan API key alıp buraya ekleyin
+# Multi-org failover için gerekli (rate limit bypass)
+ANTHROPIC_KEY_HAIKU_ORG2=sk-ant-...      # Org 2 - Claude Haiku için (FARKLI ORG)
+ANTHROPIC_KEY_SONNETX_ORG2=sk-ant-...    # Org 2 - Claude Sonnet 4 için (FARKLI ORG)
+ANTHROPIC_KEY_SONNET_ORG2=sk-ant-...     # Org 2 - Claude Sonnet 4.5 için (FARKLI ORG)
+
+# ============================================
+# ÜÇÜNCÜ ORGANİZASYON (Org 3) - FAILOVER İÇİN
+# ============================================
+# NOT: Üçüncü bir organizasyondan API key alıp buraya ekleyin
+# Daha yüksek kapasite için (autox modeli için özellikle önemli)
+ANTHROPIC_KEY_HAIKU_ORG3=sk-ant-...      # Org 3 - Claude Haiku için (FARKLI ORG)
+
+# ============================================
+# BACKUP KEY'LER
+# ============================================
+ANTHROPIC_BACKUP_KEY=sk-ant-...          # Backup için (fallback modeller)
+OPENAI_API_KEY=sk-...                    # OpenAI backup için (GPT-4 Turbo)
+
+# ============================================
+# LITELLM AYARLARI
+# ============================================
 LITELLM_MASTER_KEY=sk-super-gizli-admin-sifren
 
+# ============================================
+# VERİTABANI
+# ============================================
 DATABASE_URL=postgres://postgres:4f963bc9b8b997a140cf@proxyapison_litellm-db-x:5432/litellm-db?sslmode=disable
 
+# ============================================
+# REDIS CACHE
+# ============================================
+REDIS_URL=redis://default:2cfbf38dbe81a13dc6aa@proxyapison_litellm-redis:6379
 REDIS_HOST=proxyapison_litellm-redis
-
 REDIS_PORT=6379
-
 REDIS_PASSWORD=2cfbf38dbe81a13dc6aa
+
+# ============================================
+# HAIKU PLANNER AYARLARI
+# ============================================
+# Config dosyası yolu (opsiyonel, varsayılan: config.yaml)
+CONFIG_YAML_PATH=config.yaml
+# Alternatif: HAIKU_CONFIG_PATH=config.yaml
+
+# LiteLLM Proxy URL (Haiku Planner için)
+LITELLM_PROXY_URL=http://litellm:4000
+
+# Haiku Proxy Port
+PROXY_PORT=8000
+
+# ============================================
+# MONİTORİNG & LOGGING (Opsiyonel)
+# ============================================
+# Langfuse (opsiyonel)
+LANGFUSE_SECRET_KEY=sk-...
+LANGFUSE_PUBLIC_KEY=pk-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+
+# Webhook (opsiyonel)
+MONITORING_WEBHOOK_URL=https://your-webhook-url.com
+
+# Email (opsiyonel)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+FROM_EMAIL=your-email@gmail.com
+ADMIN_EMAIL=admin@example.com
+
+# UI Credentials
+UI_USERNAME=admin
+UI_PASSWORD=your-secure-password
+
+# ============================================
+# ÖNEMLİ NOTLAR
+# ============================================
+# 1. Multi-org failover için en az 2-3 farklı organizasyondan
+#    API key almanız gerekiyor. Her key farklı rate limit'lere sahip olacak.
+#
+# 2. Org 2 ve Org 3 key'leri şu an boş. Farklı organizasyonlardan
+#    API key alıp eklemeniz gerekiyor.
+#
+# 3. Haiku Planner config.yaml dosyasını otomatik okur.
+#    CONFIG_YAML_PATH ile özel bir yol belirtebilirsiniz.
+#
+# 4. Tüm key'ler güvenli tutulmalı ve production'da environment
+#    variables olarak saklanmalıdır.
+# ============================================
 

@@ -3,43 +3,97 @@
 # Güncellenme: 2025-12-26
 
 model_list:
-  # Claude-4 Haiku (Hızlı ve ekonomik - %40 kullanım)
+  # Claude-4 Haiku (Hızlı ve ekonomik - %60 kullanım - OPTİMİZE EDİLDİ)
+  # Aynı model için farklı org API key'leri - Rate limit failover için
   - model_name: autox
     litellm_params:
       model: anthropic/claude-haiku-4-5-20251001
-      api_key: os.environ/ANTHROPIC_KEY_HAIKU
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU  # Org 1
     max_parallel_requests: 8
-    weight: 40
+    weight: 30  # İlk key için %30
     tpm: 50000  # tokens per minute
     rpm: 100    # requests per minute
+    
+  # Aynı model - Farklı org API key (Rate limit failover)
+  - model_name: autox
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU_ORG2  # Org 2 - Farklı organizasyon
+    max_parallel_requests: 8
+    weight: 20  # İkinci key için %20
+    tpm: 50000
+    rpm: 100
+    
+  # Aynı model - Üçüncü org API key (Rate limit failover)
+  - model_name: autox
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU_ORG3  # Org 3 - Farklı organizasyon
+    max_parallel_requests: 8
+    weight: 10  # Üçüncü key için %10
+    tpm: 50000
+    rpm: 100
 
-  # Claude-4 Sonnet (Premium - %30 kullanım)
+  # Claude-4 Sonnet (Premium - %15 kullanım - OPTİMİZE EDİLDİ)
+  # Aynı model için farklı org API key'leri - Rate limit failover için
   - model_name: sonnet-4-x
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
-      api_key: os.environ/ANTHROPIC_KEY_SONNETX
+      api_key: os.environ/ANTHROPIC_KEY_SONNETX  # Org 1
     max_parallel_requests: 4
-    weight: 30
+    weight: 10  # İlk key için %10
+    tpm: 30000
+    rpm: 60
+    
+  # Aynı model - Farklı org API key (Rate limit failover)
+  - model_name: sonnet-4-x
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_KEY_SONNETX_ORG2  # Org 2 - Farklı organizasyon
+    max_parallel_requests: 4
+    weight: 5   # İkinci key için %5
     tpm: 30000
     rpm: 60
 
-  # Claude-4.5 Sonnet (En yeni - %30 kullanım)
+  # Claude-4.5 Sonnet (En yeni - %15 kullanım - OPTİMİZE EDİLDİ)
+  # Aynı model için farklı org API key'leri - Rate limit failover için
   - model_name: sonnet-4-5-x
     litellm_params:
       model: anthropic/claude-sonnet-4-5-20250929
-      api_key: os.environ/ANTHROPIC_KEY_SONNET
+      api_key: os.environ/ANTHROPIC_KEY_SONNET  # Org 1
     max_parallel_requests: 4
-    weight: 30
+    weight: 10  # İlk key için %10
+    tpm: 30000
+    rpm: 60
+    
+  # Aynı model - Farklı org API key (Rate limit failover)
+  - model_name: sonnet-4-5-x
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5-20250929
+      api_key: os.environ/ANTHROPIC_KEY_SONNET_ORG2  # Org 2 - Farklı organizasyon
+    max_parallel_requests: 4
+    weight: 5   # İkinci key için %5
     tpm: 30000
     rpm: 60
 
-  # Claude 3.5 Sonnet (Premium - %20 kullanım)
+  # Claude 3.5 Sonnet (Premium - %10 kullanım - OPTİMİZE EDİLDİ)
+  # Aynı model için farklı org API key'leri - Rate limit failover için
   - model_name: claude-3-5-x
     litellm_params:
       model: anthropic/claude-3-5-sonnet-20241022
-      api_key: os.environ/ANTHROPIC_KEY_HAIKU
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU  # Org 1
     max_parallel_requests: 4
-    weight: 20
+    weight: 7   # İlk key için %7
+    tpm: 30000
+    rpm: 60
+    
+  # Aynı model - Farklı org API key (Rate limit failover)
+  - model_name: claude-3-5-x
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_KEY_HAIKU_ORG2  # Org 2 - Farklı organizasyon
+    max_parallel_requests: 4
+    weight: 3   # İkinci key için %3
     tpm: 30000
     rpm: 60
 
@@ -62,15 +116,17 @@ model_list:
     tpm: 40000
     rpm: 80
 
-# Router ayarları
+# Router ayarları - MULTI-ORG API KEY FAILOVER İÇİN OPTİMİZE EDİLDİ
 router_settings:
-  routing_strategy: least-busy
-  enable_pre_call_check: true
-  allowed_fails: 3
-  cooldown_time: 30
-  num_retries: 3
-  retry_delay: 2
-  timeout: 600  # MVP: Büyük istekler için 10 dakika (Haiku planner için)
+  routing_strategy: least-busy  # En az meşgul olan key'i seçer
+  enable_pre_call_check: true    # Rate limit kontrolü yapar
+  allowed_fails: 3                # 3 başarısız denemeden sonra bir sonraki key'e geçer
+  cooldown_time: 30               # Rate limit'e takılan key 30 saniye bekler
+  num_retries: 3                  # Her key için 3 retry
+  retry_delay: 2                  # Retry arası 2 saniye
+  timeout: 600                    # MVP: Büyük istekler için 10 dakika (Haiku planner için)
+  # ÖNEMLİ: Aynı model_name ile birden fazla entry olduğunda,
+  # LiteLLM otomatik olarak rate limit durumunda bir sonraki key'e geçer
 
 # Ana LiteLLM ayarları
 litellm_settings:
@@ -95,6 +151,9 @@ litellm_settings:
   failure_callback: ["langfuse", "webhook"]
   
   # Fallback stratejisi
+  # NOT: Aynı model_name için birden fazla API key varsa,
+  # LiteLLM otomatik olarak rate limit durumunda bir sonraki key'e geçer
+  # Bu fallback'ler farklı modeller için (tüm key'ler tükenirse)
   fallbacks:
     - {"autox": ["claude-3-haiku-backup"]}
     - {"sonnet-4-x": ["gpt-4-turbo-backup", "autox"]}
@@ -105,14 +164,14 @@ litellm_settings:
   default_user_max_budget: 23.19  # $800 TL / 34.5 kur = ~$23.19
   default_user_budget_duration: "30d"
   
-  # Rate limiting (kullanıcı başına)
-  default_user_tpm_limit: 833     # dakikada 833 token
-  default_user_rpm_limit: 20       # dakikada 2 istek
-  default_user_max_requests_per_day: 100    # günde 100 istek
-  default_user_max_tokens_per_day: 50000    # günde 50K token
+  # Rate limiting (kullanıcı başına) - OPTİMİZE EDİLMİŞ
+  default_user_tpm_limit: 500     # dakikada 500 token (833'ten düşürüldü)
+  default_user_rpm_limit: 2        # dakikada 2 istek (aynı)
+  default_user_max_requests_per_day: 50     # günde 50 istek (100'den düşürüldü)
+  default_user_max_tokens_per_day: 20000    # günde 20K token (50K'dan düşürüldü)
   
-  # Global limitler
-  max_budget: 1160  # Toplam aylık bütçe ($)
+  # Global limitler - OPTİMİZE EDİLMİŞ
+  max_budget: 465  # Toplam aylık bütçe ($) - 1160'tan 465'e düşürüldü (gerçekçi maliyet)
   budget_duration: "30d"
   
   # Güvenlik ayarları
@@ -149,21 +208,21 @@ general_settings:
 
 # Kullanıcı grupları ve özel limitler
 user_groups:
-  # Premium kullanıcılar (daha yüksek limitler)
+  # Premium kullanıcılar (daha yüksek limitler) - OPTİMİZE EDİLMİŞ
   premium:
     max_budget: 46.38  # 2x normal limit
-    tpm_limit: 1666
+    tpm_limit: 1000   # 1666'dan 1000'e düşürüldü
     rpm_limit: 4
-    max_requests_per_day: 200
-    max_tokens_per_day: 100000
+    max_requests_per_day: 100  # 200'den 100'e düşürüldü
+    max_tokens_per_day: 40000  # 100K'dan 40K'ya düşürüldü
     
-  # Starter kullanıcılar (daha düşük limitler)
+  # Starter kullanıcılar (daha düşük limitler) - OPTİMİZE EDİLMİŞ
   starter:
     max_budget: 11.59  # 0.5x normal limit
-    tpm_limit: 416
+    tpm_limit: 250     # 416'dan 250'ye düşürüldü
     rpm_limit: 1
-    max_requests_per_day: 50
-    max_tokens_per_day: 25000
+    max_requests_per_day: 25  # 50'den 25'e düşürüldü
+    max_tokens_per_day: 10000  # 25K'dan 10K'ya düşürüldü
 
 # Model-specific ayarları
 model_settings:
@@ -257,9 +316,14 @@ haiku_planner:
   fast_execution_model: "autox"  # x-quality: fast için
   deep_execution_model: "sonnet-4-x"  # x-quality: deep için
   
-  # Maliyet kontrol
+  # Maliyet kontrol ve optimizasyon
   max_cost_per_request: 1.0  # $1 maksimum per request
   cost_safety_margin: 0.2  # %20 güvenlik marjı
+  cost_optimization_enabled: true  # Maliyet optimizasyonu aktif
+  optimal_chunk_size: 1500  # En uygun chunk boyutu (token) - maliyet için optimize
+  max_chunk_size: 2000  # Maksimum chunk boyutu
+  min_chunk_size: 500   # Minimum chunk boyutu (çok küçük chunk'lar verimsiz)
+  cost_savings_target: 0.3  # %30 maliyet tasarrufu hedefi
   
   # Timeout ayarları (MVP: Büyük istekler için uyumlu)
   planner_timeout: 60  # saniye - plan oluşturma için

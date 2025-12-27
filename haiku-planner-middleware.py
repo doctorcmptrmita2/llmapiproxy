@@ -8,6 +8,8 @@ import json
 import asyncio
 import aiohttp
 import time
+import yaml
+import os
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 import tiktoken
@@ -47,15 +49,39 @@ class ChunkResult:
 class HaikuPlannerMiddleware:
     """Haiku Planner Middleware Sınıfı"""
     
-    def __init__(self, litellm_base_url: str, master_key: str):
+    def __init__(self, litellm_base_url: str, master_key: str, config_path: str = None):
         self.litellm_base_url = litellm_base_url.rstrip('/')
         self.master_key = master_key
         
-        # Konfigürasyon
-        self.LARGE_REQUEST_THRESHOLD = 8000  # token threshold
-        self.MAX_CHUNKS = 3  # MEGA_PROMPT: max 3 chunk
-        self.MAX_INTERNAL_CALLS = 4  # 1 planner + 3 chunks
-        self.PLANNER_MODEL = "autox"  # Haiku 4.5 (hızlı ve ucuz)
+        # Config dosyasını yükle (config.yaml'dan)
+        config = self._load_config(config_path)
+        haiku_config = config.get('haiku_planner', {})
+        
+        # Konfigürasyon (config.yaml'dan veya default değerler)
+        self.LARGE_REQUEST_THRESHOLD = haiku_config.get('large_request_threshold', 8000)
+        self.MAX_CHUNKS = haiku_config.get('max_chunks', 3)
+        self.MAX_INTERNAL_CALLS = haiku_config.get('max_internal_calls', 4)
+        self.PLANNER_MODEL = haiku_config.get('planner_model', 'autox')
+        
+        # Maliyet optimizasyonu ayarları (config.yaml'dan)
+        self.COST_OPTIMIZATION_ENABLED = haiku_config.get('cost_optimization_enabled', True)
+        self.OPTIMAL_CHUNK_SIZE = haiku_config.get('optimal_chunk_size', 1500)
+        self.MAX_CHUNK_SIZE = haiku_config.get('max_chunk_size', 2000)
+        self.MIN_CHUNK_SIZE = haiku_config.get('min_chunk_size', 500)
+        self.COST_SAVINGS_TARGET = haiku_config.get('cost_savings_target', 0.3)
+        
+        # Model seçimi (config.yaml'dan)
+        self.FAST_EXECUTION_MODEL = haiku_config.get('fast_execution_model', 'autox')
+        self.DEEP_EXECUTION_MODEL = haiku_config.get('deep_execution_model', 'sonnet-4-x')
+        
+        # Timeout ayarları (config.yaml'dan)
+        self.PLANNER_TIMEOUT = haiku_config.get('planner_timeout', 60)
+        self.CHUNK_TIMEOUT = haiku_config.get('chunk_timeout', 120)
+        self.TOTAL_TIMEOUT = haiku_config.get('total_timeout', 600)
+        
+        # Maliyet kontrolü (config.yaml'dan)
+        self.MAX_COST_PER_REQUEST = haiku_config.get('max_cost_per_request', 1.0)
+        self.COST_SAFETY_MARGIN = haiku_config.get('cost_safety_margin', 0.2)
         
         # Token encoder
         self.encoder = tiktoken.get_encoding("cl100k_base")
@@ -68,6 +94,28 @@ class HaikuPlannerMiddleware:
             "claude-3-5-x": 15.0,  # Claude 3.5 Sonnet
             "gpt-4-turbo-backup": 20.0
         }
+    
+    def _load_config(self, config_path: Optional[str] = None) -> Dict[str, Any]:
+        """Config.yaml dosyasını yükle"""
+        if config_path is None:
+            # Varsayılan config yolu
+            config_path = os.getenv('HAIKU_CONFIG_PATH', 'config.yaml')
+        
+        # Environment variable'dan da okuyabilir
+        config_path = os.getenv('CONFIG_YAML_PATH', config_path)
+        
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                    print(f"✅ Config yüklendi: {config_path}")
+                    return config
+            else:
+                print(f"⚠️  Config dosyası bulunamadı: {config_path}, default değerler kullanılıyor")
+                return {}
+        except Exception as e:
+            print(f"⚠️  Config yükleme hatası: {e}, default değerler kullanılıyor")
+            return {}
     
     def count_tokens(self, text: str) -> int:
         """Token sayısını hesapla"""
@@ -109,7 +157,7 @@ class HaikuPlannerMiddleware:
         # MVP: 8000+ token input veya büyük istekler için otomatik aktif
         return total_tokens > self.LARGE_REQUEST_THRESHOLD
     
-    async def create_plan(self, original_request: Dict[str, Any]) -> DecompositionPlan:
+    async def create_plan(self, original_request: Dict[str, Any], headers: Dict[str, str] = None) -> DecompositionPlan:
         """Haiku ile decomposition planı oluştur"""
         
         # Orijinal mesajları analiz et
@@ -171,8 +219,8 @@ Return ONLY the JSON, no other text."""
             "stream": False  # MVP: Streaming kapalı
         }
         
-        # MVP: Planner için timeout (60 saniye)
-        timeout = aiohttp.ClientTimeout(total=60)
+        # Planner için timeout (config.yaml'dan)
+        timeout = aiohttp.ClientTimeout(total=self.PLANNER_TIMEOUT)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 f"{self.litellm_base_url}/chat/completions",
@@ -200,24 +248,64 @@ Return ONLY the JSON, no other text."""
                     
                     plan_data = json.loads(plan_text)
                     
-                    # ChunkPlan objelerine dönüştür
+                    # ChunkPlan objelerine dönüştür (Maliyet optimizasyonu ile)
                     chunks = []
                     for chunk_data in plan_data.get('chunks', [])[:self.MAX_CHUNKS]:
+                        # Maliyet optimizasyonu: Chunk boyutunu optimize et
+                        requested_tokens = chunk_data.get('max_tokens', 2000)
+                        if self.COST_OPTIMIZATION_ENABLED:
+                            # Optimal chunk size'a yaklaştır (daha küçük = daha ucuz)
+                            optimal_tokens = min(
+                                max(requested_tokens, self.MIN_CHUNK_SIZE),
+                                self.OPTIMAL_CHUNK_SIZE  # 1500 token optimal
+                            )
+                        else:
+                            optimal_tokens = min(requested_tokens, self.MAX_CHUNK_SIZE)
+                        
                         chunks.append(ChunkPlan(
                             title=chunk_data.get('title', ''),
                             goal=chunk_data.get('goal', ''),
                             inputs_needed=chunk_data.get('inputs_needed', []),
                             expected_output=chunk_data.get('expected_output', ''),
-                            max_tokens=min(chunk_data.get('max_tokens', 2000), 2000)
+                            max_tokens=optimal_tokens
                         ))
                     
                     safety = plan_data.get('safety', {})
                     estimated_tokens = safety.get('estimated_total_tokens', 6000)
                     
-                    # Maliyet hesapla
+                    # Maliyet hesapla (Optimize edilmiş chunk'lar ile)
                     model = original_request.get('model', 'autox')
                     cost_per_token = self.model_costs.get(model, 10.0) / 1_000_000
-                    estimated_cost = estimated_tokens * cost_per_token
+                    
+                    # Planner maliyeti (Haiku - ucuz)
+                    planner_cost = 1000 * (self.model_costs.get(self.PLANNER_MODEL, 3.0) / 1_000_000)
+                    
+                    # Chunk maliyetleri (optimize edilmiş boyutlarla)
+                    chunk_costs = []
+                    for chunk in chunks:
+                        # Execution model seçimi (quality header'a göre)
+                        quality = original_request.get('quality', 'fast')
+                        if quality == 'deep':
+                            exec_model = model
+                        else:
+                            exec_model = self.PLANNER_MODEL  # Fast için Haiku (ucuz)
+                        
+                        exec_cost_per_token = self.model_costs.get(exec_model, 3.0) / 1_000_000
+                        chunk_cost = chunk.max_tokens * exec_cost_per_token
+                        chunk_costs.append(chunk_cost)
+                    
+                    # Toplam maliyet
+                    estimated_cost = planner_cost + sum(chunk_costs)
+                    
+                    # Maliyet optimizasyonu uyarısı
+                    if self.COST_OPTIMIZATION_ENABLED:
+                        # Normal maliyet (optimizasyon olmadan)
+                        normal_cost = estimated_tokens * cost_per_token
+                        savings = normal_cost - estimated_cost
+                        savings_percent = (savings / normal_cost * 100) if normal_cost > 0 else 0
+                        
+                        if savings_percent > 0:
+                            print(f"💰 Maliyet optimizasyonu: ${savings:.4f} tasarruf (%{savings_percent:.1f})")
                     
                     return DecompositionPlan(
                         summary=plan_data.get('summary', ''),
@@ -237,11 +325,11 @@ Return ONLY the JSON, no other text."""
         
         start_time = time.time()
         
-        # Model seçimi (quality header'a göre)
+        # Model seçimi (quality header'a göre - config.yaml'dan)
         if quality_header == "deep":
-            model = original_request.get('model', 'sonnet-4-x')
+            model = self.DEEP_EXECUTION_MODEL  # Config'den: deep_execution_model
         else:
-            model = self.PLANNER_MODEL  # Fast için Haiku
+            model = self.FAST_EXECUTION_MODEL  # Config'den: fast_execution_model
         
         # Chunk-specific prompt
         chunk_prompt = f"""Execute this specific part of a larger coding task:
@@ -272,8 +360,8 @@ Generate the code changes as unified diff patches."""
         }
         
         try:
-            # MVP: Büyük chunk'lar için timeout (120 saniye)
-            timeout = aiohttp.ClientTimeout(total=180)  # 3 dakika per chunk
+            # Chunk için timeout (config.yaml'dan)
+            timeout = aiohttp.ClientTimeout(total=self.CHUNK_TIMEOUT)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(
                     f"{self.litellm_base_url}/chat/completions",
@@ -330,9 +418,15 @@ Generate the code changes as unified diff patches."""
             )
     
     def check_budget_limits(self, estimated_cost: float, max_cost: Optional[float]) -> Tuple[bool, str]:
-        """Bütçe limitlerini kontrol et"""
-        if max_cost and estimated_cost > max_cost:
-            return False, f"Estimated cost ${estimated_cost:.4f} exceeds limit ${max_cost:.4f}"
+        """Bütçe limitlerini kontrol et (config.yaml'dan max_cost_per_request)"""
+        # Header'dan gelen max_cost veya config'den
+        effective_max_cost = max_cost if max_cost else self.MAX_COST_PER_REQUEST
+        
+        # Safety margin uygula
+        effective_max_cost = effective_max_cost * (1 - self.COST_SAFETY_MARGIN)
+        
+        if estimated_cost > effective_max_cost:
+            return False, f"Estimated cost ${estimated_cost:.4f} exceeds limit ${effective_max_cost:.4f} (with {self.COST_SAFETY_MARGIN*100:.0f}% safety margin)"
         return True, ""
     
     def combine_results(self, plan: DecompositionPlan, 
@@ -417,9 +511,9 @@ Generate the code changes as unified diff patches."""
         """Ana request processing fonksiyonu"""
         
         try:
-            # 1. Plan oluştur
+            # 1. Plan oluştur (headers ile birlikte)
             print("🧠 Creating decomposition plan...")
-            plan = await self.create_plan(request_data)
+            plan = await self.create_plan(request_data, headers)
             
             # 2. Bütçe kontrolü
             max_cost = request_data.get('max_cost')

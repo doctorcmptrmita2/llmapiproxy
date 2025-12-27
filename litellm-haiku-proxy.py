@@ -51,10 +51,12 @@ async def startup_event():
     
     litellm_url = os.getenv("LITELLM_PROXY_URL", "http://localhost:4000")
     master_key = os.getenv("LITELLM_MASTER_KEY", "sk-default-key")
+    config_path = os.getenv("CONFIG_YAML_PATH", "config.yaml")
     
     haiku_planner = HaikuPlannerMiddleware(
         litellm_base_url=litellm_url,
-        master_key=master_key
+        master_key=master_key,
+        config_path=config_path  # Config.yaml yolunu geç
     )
     
     logger.info("✅ Haiku Planner initialized")
