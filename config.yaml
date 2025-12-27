@@ -37,7 +37,7 @@ model_list:
   - model_name: claude-3-5-x
     litellm_params:
       model: anthropic/claude-3-5-sonnet-20241022
-      api_key: os.environ/ANTHROPIC_KEY_SONNET
+       api_key: os.environ/ANTHROPIC_KEY_HAIKU
     max_parallel_requests: 4
     weight: 20
     tpm: 30000
